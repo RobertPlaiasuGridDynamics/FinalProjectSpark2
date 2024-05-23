@@ -1,7 +1,7 @@
 import breeze.linalg.sum
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark
-import org.apache.spark.sql.{SparkSession, functions}
+import org.apache.spark.sql.{DataFrame, SparkSession, functions}
 import org.apache.avro.Schema
 import org.apache.parquet.Files
 import org.apache.spark.sql.catalyst.dsl.expressions.StringToAttributeConversionHelper
@@ -47,7 +47,12 @@ object Main extends App{
   messageDir.createOrReplaceTempView("message")
 
 
-  val retweetCountSubscriber = retweet.groupBy("USER_ID","MESSAGE_ID").agg(count("SUBSCRIBER_ID").alias("count"))
+  val retweetCountSubscriber = countMessageRetweets(retweet)
+
+  def countMessageRetweets(retweet : DataFrame) = {
+    retweet.groupBy("USER_ID", "MESSAGE_ID").agg(count("SUBSCRIBER_ID").alias("count"))
+  }
+
   retweetCountSubscriber.createOrReplaceTempView("retweetCount")
   retweet.createOrReplaceTempView("retweet")
 
