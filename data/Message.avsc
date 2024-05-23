@@ -1,0 +1,8 @@
+{
+  "type": "record",
+  "name": "Message",
+  "fields": [
+    {"name": "USER_ID", "type": "int"},
+    {"name": "MESSAGE_ID", "type": "int"}
+  ]
+}

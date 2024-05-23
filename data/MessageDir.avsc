@@ -1,0 +1,8 @@
+{
+  "type": "record",
+  "name": "MessageDir",
+  "fields": [
+    {"name": "MESSAGE_ID", "type": "int"},
+    {"name": "TEXT", "type": "string"}
+  ]
+}

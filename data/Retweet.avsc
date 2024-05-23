@@ -1,0 +1,9 @@
+{
+  "type": "record",
+  "name": "Retweet",
+  "fields": [
+    {"name": "USER_ID", "type": "int"},
+    {"name": "SUBSCRIBER_ID", "type": "int"},
+    {"name": "MESSAGE_ID", "type": "int"}
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "type": "record",
+  "name": "UserDir",
+  "fields": [
+    {"name": "USER_ID", "type": "int"},
+    {"name": "FIRST_NAME", "type": "string"},
+    {"name": "LAST_NAME", "type": "string"}
+  ]
+}
