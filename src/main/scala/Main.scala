@@ -25,12 +25,12 @@ object Main extends App{
   // retweet
   WriteJsonToAvro("data/Retweet.json","data/Retweet",spark)
 
-  val retweet = ReadAvro.read("data/Retweet","data/Retweet.avsc",spark)
+  val retweet = ReadAvro.read("data/Retweet","data/Retweet.avsc",spark).as("retweet")
 
   // UserDir
   WriteJsonToAvro("data/UserDir.json","data/UserDir",spark)
 
-  val userDir = ReadAvro.read("data/UserDir","data/UserDir.avsc",spark)
+  val userDir = ReadAvro.read("data/UserDir","data/UserDir.avsc",spark).as("users")
   userDir.createOrReplaceTempView("users")
 
   // message
@@ -41,13 +41,15 @@ object Main extends App{
 
 
   // messageDir
+  import spark.implicits._
+
   WriteJsonToAvro("data/MessageDir.json","data/MessageDir",spark)
 
-  val messageDir = ReadAvro.read("data/MessageDir","data/MessageDir.avsc",spark)
+  val messageDir = ReadAvro.read("data/MessageDir","data/MessageDir.avsc",spark).as("message")
   messageDir.createOrReplaceTempView("message")
 
 
-  val retweetCountSubscriber = countMessageRetweets(retweet)
+  val retweetCountSubscriber = countMessageRetweets(retweet).as("retweetCount")
 
   def countMessageRetweets(retweet : DataFrame) = {
     retweet.groupBy("USER_ID", "MESSAGE_ID").agg(count("SUBSCRIBER_ID").alias("count"))
@@ -56,34 +58,30 @@ object Main extends App{
   retweetCountSubscriber.createOrReplaceTempView("retweetCount")
   retweet.createOrReplaceTempView("retweet")
 
-  spark.sql("select sum(count) as NUMBER_RETWEETS,retweetCount.USER_ID,retweetCount.MESSAGE_ID from " +
-    "retweetCount,retweet " +
-    "where (SUBSCRIBER_ID == retweetCount.USER_ID AND " +
-    "retweet.MESSAGE_ID == retweetCount.MESSAGE_ID ) OR "+
-    "(retweet.USER_ID == retweetCount.USER_ID AND " +
-    "retweet.MESSAGE_ID == retweetCount.MESSAGE_ID )"+
-    "group by retweetCount.USER_ID,retweetCount.MESSAGE_ID " +
-    "order by sum(count) DESC").createOrReplaceTempView("simpleTopUser")
+  val countAllRetweets = retweetCountSubscriber
+    .join(retweet,
+      col("SUBSCRIBER_ID") === col("retweetCount.USER_ID")
+      && col("retweetCount.MESSAGE_ID") === col("retweet.MESSAGE_ID")
+    )
+    .union(
+      retweetCountSubscriber
+        .join(retweet,
+          col("retweet.USER_ID") === col("retweetCount.USER_ID")
+            && col("retweetCount.MESSAGE_ID") === col("retweet.MESSAGE_ID")
+        ))
+    .groupBy(col("retweetCount.USER_ID"),col("retweetCount.MESSAGE_ID"))
+    .agg(functions.sum(col("count")).as("NUMBER_RETWEETS"))
+    .select("NUMBER_RETWEETS","USER_ID","MESSAGE_ID")
+    .sort(col("NUMBER_RETWEETS").desc)
+    .as("simpleTopUser")
 
-  spark.sql("select simpleTopUser.USER_ID,FIRST_NAME,LAST_NAME,simpleTopUser.MESSAGE_ID,message.TEXT,NUMBER_RETWEETS " +
-    "from simpleTopUser,users,message " +
-    "where message.MESSAGE_ID == simpleTopUser.MESSAGE_ID AND " +
-    "users.USER_ID == simpleTopUser.USER_ID " +
-    "order by NUMBER_RETWEETS DESC"
-  ).show(10)
 
-
-  /*
-  for(r <- retweet) {
-    var count = 0
-    for(t <- retweetCountSubscriber) {
-      if((r.get(0) == t.get(0) && r.get(1) == t.get(1)) ||
-        (r.get(1) == t.get(0) && r.get(1) == t.get(1))) count = t.getInt(2) + count
-        println(count)
-    }
-  }
-
-   */
+  countAllRetweets
+    .join(messageDir,col("message.MESSAGE_ID") === col("simpleTopUser.MESSAGE_ID"))
+    .join(userDir,col("users.USER_ID") === col("simpleTopUser.USER_ID"))
+    .select("simpleTopUser.USER_ID","FIRST_NAME","LAST_NAME","simpleTopUser.MESSAGE_ID","TEXT","NUMBER_RETWEETS")
+    .sort(col("NUMBER_RETWEETS").desc)
+    .show(10)
 
 
 }
