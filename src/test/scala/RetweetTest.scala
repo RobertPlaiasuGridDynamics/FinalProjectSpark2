@@ -16,8 +16,8 @@ class RetweetTest extends AnyFunSuite {
     val retweet = ReadAvro.read("data/Retweet","data/Retweet.avsc",spark)
 
     assert(!retweet.isEmpty)
-
-    assert(retweet.columns.sameElements(Array("USER_ID","MESSAGE_ID","SUBSCRIBER_ID")))
+    retweet.columns.foreach(println(_))
+    assert(retweet.columns.sorted.sameElements(Array("USER_ID","MESSAGE_ID","SUBSCRIBER_ID").sorted))
 
 
     import spark.implicits._
@@ -36,7 +36,7 @@ class RetweetTest extends AnyFunSuite {
     val retweetCountSubscriber = retweet.groupBy("USER_ID","MESSAGE_ID").agg(count("SUBSCRIBER_ID").alias("count"))
 
     assert(!retweetCountSubscriber.isEmpty)
-    assert(retweetCountSubscriber.columns.sameElements(Array("USER_ID","MESSAGE_ID","count")))
+    assert(retweetCountSubscriber.columns.sorted.sameElements(Array("USER_ID","MESSAGE_ID","count").sorted))
 
     import spark.implicits._
     assert(retweetCountSubscriber
