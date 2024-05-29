@@ -1,4 +1,5 @@
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.col
 import org.scalatest.funsuite.AnyFunSuite
 
 import java.io.File
@@ -31,6 +32,15 @@ class AvroTest extends AnyFunSuite{
     assert(test.count() == 1)
     assert(test.schema.nonEmpty)
     assert(test.schema.names.sameElements(Array("id","test")))
+    import spark.implicits._
+    assert(
+    test
+      .select(col("id"), col("test"))
+      .as[(Int, String)]
+      .collect()
+      .toList == List((1,"test"))
+    )
+
 
   }
 
